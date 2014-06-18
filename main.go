@@ -14,11 +14,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net/http"
-	// "net/url"
-	"encoding/json"
+	"net/url"
 )
 
 const (
@@ -33,126 +33,88 @@ var (
 			"root":    "/{type}/",
 			"details": "/{type}/{id:[0-9]+}/",
 		},
-		"collections": map[string]map[string]int{
-			"templates":     map[string]int{},
-			"surveys":       map[string]int{"collectors": 1, "invites": 1, "responses": 1, "structure": 1, "invite_codes": 1, "groups": 1, "reports": 1, "csv": 1},
-			"collectors":    map[string]int{},
-			"contacts":      map[string]int{},
-			"embed":         map[string]int{},
-			"contact-lists": map[string]int{"contacts": 1},
-			"webhooks":      map[string]int{},
+		"collections": map[string][]string{
+			"templates":     []string{},
+			"surveys":       []string{"collectors", "invites", "responses", "structure", "invite_codes", "groups", "reports", "csv"},
+			"collectors":    []string{},
+			"contacts":      []string{},
+			"embed":         []string{},
+			"contact-lists": []string{"contacts"},
+			"webhooks":      []string{},
 		},
 	}
 	FORMAT = "" // default is json
 )
 
-func Create(entityType string, data map[string]string) string {
+func makeRequest(method, urlString string, data map[string]string) (string, error) {
 	client := &http.Client{}
-	URL := HOST + entityType + "/"
-
-	b, err := json.Marshal(data)
 
 	//pass the values to the request's body
-	req, err := http.NewRequest("POST", URL, bytes.NewReader(b))
-	if err != nil {
-		log.Fatal(err)
+	var bodyReader *bytes.Reader
+	if data != nil {
+		body, err := json.Marshal(data)
+		handle(err)
+		bodyReader = bytes.NewReader(body)
+	} else {
+		bodyReader = bytes.NewReader([]byte{})
 	}
+
+	log.Println(urlString)
+
+	req, err := http.NewRequest(method, urlString, bodyReader)
+	handle(err)
 
 	req.Header.Set("Content-Type", "application/json")
-
 	req.SetBasicAuth(EMAIL, PASSWORD)
+
 	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
+	handle(err)
 
 	bodyText, err := ioutil.ReadAll(resp.Body)
+	handle(err)
+
 	s := string(bodyText)
-	return s
+
+	return s, err
 }
 
-func Get(entityType, id string) string {
-	client := &http.Client{}
-	URL := HOST + entityType + "/" + id + "/"
-
-	req, err := http.NewRequest("GET", URL, nil)
-	req.SetBasicAuth(EMAIL, PASSWORD)
-	resp, err := client.Do(req)
+func handle(err error) {
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
-	bodyText, err := ioutil.ReadAll(resp.Body)
-	s := string(bodyText)
-	return s
 }
 
-func Update(entityType, id string, data map[string]string) string {
-	client := &http.Client{}
-	URL := HOST + entityType + "/" + id + "/"
-
-	b, err := json.Marshal(data)
-
-	//pass the values to the request's body
-	req, err := http.NewRequest("PUT", URL, bytes.NewReader(b))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	req.SetBasicAuth(EMAIL, PASSWORD)
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	bodyText, err := ioutil.ReadAll(resp.Body)
-	s := string(bodyText)
-	return s
+func Create(entityType string, data map[string]string) (string, error) {
+	return makeRequest("POST", HOST+entityType, data)
 }
 
-func Delete(entityType, id string) string {
-	client := &http.Client{}
-	URL := HOST + entityType + "/" + id + "/"
-
-	req, err := http.NewRequest("DELETE", URL, nil)
-	req.SetBasicAuth(EMAIL, PASSWORD)
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	bodyText, err := ioutil.ReadAll(resp.Body)
-	s := string(bodyText)
-	return s
+func Get(entityType, id string) (string, error) {
+	return makeRequest("GET", HOST+entityType+"/"+id+"/", nil)
 }
 
-func List(entityType string, args map[string]string) string {
-	client := &http.Client{}
-	URL := HOST + entityType + "/"
+func Update(entityType, id string, data map[string]string) (string, error) {
+	return makeRequest("PUT", HOST+entityType+"/"+id+"/", data)
+}
 
-	if args != nil {
-		URL = URL + "?"
-	}
+func Delete(entityType, id string) (string, error) {
+	return makeRequest("DELETE", HOST+entityType+"/"+id+"/", nil)
+}
+
+func List(entityType string, args map[string]string) (string, error) {
+	URL, err := url.Parse(HOST + "/" + entityType + "/")
+	handle(err)
+	v := URL.Query()
 	for key, value := range args {
-		URL = URL + key + "=" + value
+		v.Set(key, value)
 	}
-	// IF args are not nil then add to query string plus add predicate, etc.
+	URL.RawQuery = v.Encode()
 
-	req, err := http.NewRequest("GET", URL, nil)
-	req.SetBasicAuth(EMAIL, PASSWORD)
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	bodyText, err := ioutil.ReadAll(resp.Body)
-	s := string(bodyText)
-	return s
+	return makeRequest("GET", URL.String(), nil)
 }
 
 func main() {
 
 	log.Println("Running..")
-	// log.Println(ListResponses("550996"))
 
-	// log.Println(FilterCSVByDateUpdated("550996", "2013-11-04", ">"))
+	log.Println(List("surveys", nil))
 }

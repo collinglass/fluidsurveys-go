@@ -10,7 +10,7 @@
  * @version 0.1.3
  */
 
-package main
+package fluidsurveys
 
 import (
 	"bytes"
@@ -40,13 +40,25 @@ var (
 	FORMAT = "" // default is json
 )
 
+//	Setup(...) takes your username and password and sets it package wide
+//	username: Your username
+//	password: Your password
 func Setup(username, password string) {
 	EMAIL = username
 	PASSWORD = password
 }
 
-func makeRequest(method, urlString string, data map[string]interface{}) (map[string]interface{}, error) {
+//	SetHost(...) takes your host name and sets it package wide
+//	host: Your host api url
+func SetHost(host string) {
+	HOST = host
+}
 
+// makeRequest(...) makes all requests
+// method: GET, POST, PUT, DELETE, etc.
+// urlString: url to send request
+// data: map of data to use with request
+func makeRequest(method, urlString string, data map[string]interface{}) (map[string]interface{}, error) {
 	//pass the values to the request's body
 	var bodyReader *bytes.Reader
 	if data != nil {
@@ -80,12 +92,14 @@ func makeRequest(method, urlString string, data map[string]interface{}) (map[str
 	return result, err
 }
 
+// handle(...) handles errors
 func handle(err error) {
 	if err != nil {
 		log.Panic(err)
 	}
 }
 
+// checkEntity(...) checks if entity is a valid collection
 func checkEntity(entityType string) string {
 	if collections[entityType] == nil {
 		log.Fatal(errors.New("Invalid Entity Type"))
@@ -93,6 +107,7 @@ func checkEntity(entityType string) string {
 	return entityType
 }
 
+// checkChild(...) checks if child is a valid child of a collection
 func checkChild(entityType, childType string) string {
 	if collections[entityType][childType] != 1 {
 		log.Fatal(errors.New("Invalid Child Type"))
@@ -100,6 +115,9 @@ func checkChild(entityType, childType string) string {
 	return childType
 }
 
+// Create(...) creates a new entity
+// entityType: Entity type you want to create
+// data: map of data to set on new entity
 func Create(entityType string, data map[string]interface{}) (map[string]interface{}, error) {
 	if entityType == "surveys" {
 		resp, err := makeRequest("POST", fmt.Sprintf("%s%s/", HOST, checkEntity(entityType)), data)
@@ -112,10 +130,17 @@ func Create(entityType string, data map[string]interface{}) (map[string]interfac
 	return makeRequest("POST", fmt.Sprintf("%s%s/", HOST, checkEntity(entityType)), data)
 }
 
+// Get(...) gets an entity by id
+// entityType: Entity type you want to get
+// id: Id of entity you want to get
 func Get(entityType string, id uint64) (map[string]interface{}, error) {
 	return makeRequest("GET", fmt.Sprintf("%s%s/%d/", HOST, checkEntity(entityType), id), nil)
 }
 
+// Update(...) updates an entity
+// entityType: Entity type you want to update
+// id: Id of entity you want to update
+// data: map of data you want to update on entity
 func Update(entityType string, id uint64, data map[string]interface{}) (map[string]interface{}, error) {
 	if entityType == "surveys" {
 		var result map[string]interface{}
@@ -131,10 +156,16 @@ func Update(entityType string, id uint64, data map[string]interface{}) (map[stri
 	return makeRequest("PUT", fmt.Sprintf("%s%s/%d/", HOST, checkEntity(entityType), id), data)
 }
 
+// Delete(...) deletes an entity
+// entityType: Entity type you want to delete
+// id: Id of entity you want to delete
 func Delete(entityType string, id uint64) (map[string]interface{}, error) {
 	return makeRequest("DELETE", fmt.Sprintf("%s%s/%d/", HOST, checkEntity(entityType), id), nil)
 }
 
+// List(...) gets a list of entities
+// entityType: Entity type you want to get
+// args: arguments to filter results
 func List(entityType string, args map[string]string) (map[string]interface{}, error) {
 	URL, err := url.Parse(fmt.Sprintf("%s%s/", HOST, checkEntity(entityType)))
 	handle(err)
@@ -148,16 +179,31 @@ func List(entityType string, args map[string]string) (map[string]interface{}, er
 	return makeRequest("GET", URL.String(), nil)
 }
 
+// CreateChild(...) creates a new child entity on a collection
+// parentType: Parent type
+// parentId: Parent Id
+// childType: Type of child you want to create
+// childId: Id of child you want to create
+// data: map of data you want to update on entity
 func CreateChild(parentType string, parentId uint64, childType string, data map[string]interface{}) (map[string]interface{}, error) {
 	return makeRequest("POST", fmt.Sprintf("%s%s/%d/%s/", HOST, checkEntity(parentType), parentId, checkChild(parentType, childType)), data)
 }
 
+// GetChild(...) gets a child entity by id
+// parentType: Parent type
+// parentId: Parent Id
+// childType: Type of child you want to get
+// childId: Id of child you want to get
 func GetChild(parentType string, parentId uint64, childType string, childId uint64) (map[string]interface{}, error) {
 	return makeRequest("GET", fmt.Sprintf("%s%s/%d/%s/%d/", HOST, checkEntity(parentType), parentId, checkChild(parentType, childType), childId), nil)
 }
 
-func ListChildren(parentType string, parentId uint64, childType string, childId uint64, args map[string]string) (map[string]interface{}, error) {
-	URL, err := url.Parse(fmt.Sprintf("%s%s/%d/%s/%d/", HOST, checkEntity(parentType), parentId, checkChild(parentType, childType), childId))
+// ListChild(...) gets a list of children
+// parentType: Parent type
+// parentId: Parent Id
+// childType: Type of children you want to get
+func ListChildren(parentType string, parentId uint64, childType string, args map[string]string) (map[string]interface{}, error) {
+	URL, err := url.Parse(fmt.Sprintf("%s%s/%d/%s/", HOST, checkEntity(parentType), parentId, checkChild(parentType, childType)))
 	handle(err)
 
 	v := URL.Query()
@@ -167,35 +213,4 @@ func ListChildren(parentType string, parentId uint64, childType string, childId 
 	URL.RawQuery = v.Encode()
 
 	return makeRequest("GET", URL.String(), nil)
-}
-
-func main() {
-
-	log.Println("Running..")
-
-	Setup("", "")
-	// data := map[string]interface{}{"name": "New Survey123", "structure": map[string]interface{}{}}
-	data := map[string]interface{}{
-		"name": "This is",
-		"structure": map[string]interface{}{
-			"id": 554106, "created_at": "2014-06-18T23:39:23Z",
-			"deploy_url":           "http://fluidsurveys.com/surveys/collin-n2c/new-survey123-13/",
-			"survey_structure_uri": "https://fluidsurveys.com/api/v3/surveys/554106/structure/",
-			"collectors_uri":       "https://fluidsurveys.com/api/v3/surveys/554106/collectors/",
-			"number_of_responses":  0, "creator": "https://fluidsurveys.com/api/v3/users/2127403118/",
-			"send_invite_uri":  "https://fluidsurveys.com/api/v3/surveys/554106/invites/",
-			"responses_uri":    "https://fluidsurveys.com/api/v3/surveys/554106/responses/",
-			"invite_codes_uri": "https://fluidsurveys.com/api/v3/surveys/554106/invite_codes/",
-			"reports_uri":      "https://fluidsurveys.com/api/v3/surveys/554106/reports/",
-			"csv_uri":          "https://fluidsurveys.com/api/v3/surveys/554106/csv/",
-			"survey_uri":       "https://fluidsurveys.com/api/v3/surveys/554106/",
-			"live":             1, "name": "New Survey123",
-			"slug":       "new-survey123-13",
-			"updated_at": "2014-06-18T23:39:23Z",
-			"groups_uri": "https://fluidsurveys.com/api/v3/surveys/554106/groups/",
-		},
-	}
-
-	log.Println(Update("surveys", 554134, data))
-	// log.Println(Get("surveys", 554106))
 }

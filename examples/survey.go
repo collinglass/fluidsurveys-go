@@ -11,9 +11,9 @@ func main() {
 	log.Println("Running..")
 
 	fluidsurveys.Fluidsurveys("your_email", "your_password")
-	// data := map[string]interface{}{"name": "New Survey123", "structure": map[string]interface{}{}}
+
 	data := map[string]interface{}{
-		"name": "Demo Survey",
+		"name": "Demo Survey 2",
 		"structure": map[string]interface{}{
 			"created_at":           "2014-06-18T23:39:23Z",
 			"survey_structure_uri": "https://fluidsurveys.com/api/v3/surveys/123456/structure/",
@@ -78,7 +78,7 @@ func demoSurvey(data map[string]interface{}) {
 	// Update message
 	var updated string
 
-	// Unmarshall response into update object
+	// Unmarshal response into update object
 	err = json.Unmarshal(result, &updated)
 	if err != nil {
 		log.Println(err)
@@ -96,7 +96,7 @@ func demoSurvey(data map[string]interface{}) {
 	// Deleted message
 	var deleted string
 
-	// Unmarshall response into deleted message
+	// Unmarshal response into deleted message
 	err = json.Unmarshal(result, &deleted)
 	if err != nil {
 		log.Println(err)

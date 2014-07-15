@@ -25,8 +25,8 @@ import (
 
 var (
 	HOST     = "https://fluidsurveys.com/api/v3/"
-	EMAIL    = "" // Enter your email/username here
-	PASSWORD = "" // Enter your Password here
+	EMAIL    = "" // your email/username
+	PASSWORD = "" // your Password
 
 	collections = map[string]map[string]uint8{
 		"templates":     map[string]uint8{},
@@ -88,7 +88,13 @@ func Delete(entityType string, id uint64) ([]byte, error) {
 // entityType: Entity type you want to get
 // id: Id of entity you want to get
 func Get(entityType string, id uint64) ([]byte, error) {
-	resp, err := makeRequest("GET", fmt.Sprintf("%s%s/%d/", HOST, checkEntity(entityType), id), nil)
+	var url string
+	if entityType == "contact-lists" {
+		url = fmt.Sprintf("%s%s/%d/contacts/", HOST, checkEntity(entityType), id)
+	} else {
+		url = fmt.Sprintf("%s%s/%d/", HOST, checkEntity(entityType), id)
+	}
+	resp, err := makeRequest("GET", url, nil)
 
 	return resp, err
 }
